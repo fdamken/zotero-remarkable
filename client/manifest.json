@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "reMarkable Integration for Zotero",
+  "version": "0.0.1",
+  "description": "reMarkable Integration for Zotero",
+  "applications": {
+    "zotero": {
+      "id": "zotero-remarkable@damken.net",
+      "update_url": "https://github.com/fdamken/zotero-remarkable/releases/download/release/update.rdf",
+      "strict_min_version": "6.999",
+      "strict_max_version": "7.0.*"
+    }
+  }
+}
