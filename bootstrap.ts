@@ -29,7 +29,6 @@ export async function startup({ id, version, rootURI }) {
 
     const menuItem = doc.createXULElement('menuitem')
     menuItem.id = menuItemId
-    menuItem.setAttribute('type', 'checkbox')
     menuItem.setAttribute('data-l10n-id', 'push-to-remarkable')
     menuItem.addEventListener('command', () => Zotero.reMarkable.pushToReMakable())
     doc.getElementById('menu_viewPopup').appendChild(menuItem)
