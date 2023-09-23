@@ -1,5 +1,3 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions, no-var, @typescript-eslint/no-unused-vars, no-caller, @typescript-eslint/explicit-module-boundary-types */
-
 declare const Zotero: any
 declare const Services: any
 
@@ -9,7 +7,7 @@ var menuitemID = 'make-it-green-instead'
 var addedElementIDs = [stylesheetID, ftlID, menuitemID]
 
 function log(msg) {
-  Zotero.debug(`reMarkable Integration for Zotero: ${  msg}`)
+  Zotero.debug(`reMarkable Integration for Zotero: ${msg}`)
 }
 
 export function install() {
@@ -27,7 +25,7 @@ export async function startup({ id, version, rootURI }) {
     link1.id = stylesheetID
     link1.type = 'text/css'
     link1.rel = 'stylesheet'
-    link1.href = `${rootURI  }style.css`
+    link1.href = `${rootURI}style.css`
     doc.documentElement.appendChild(link1)
 
     const link2 = doc.createElement('link')
@@ -45,7 +43,7 @@ export async function startup({ id, version, rootURI }) {
     doc.getElementById('menu_viewPopup').appendChild(menuitem)
   }
 
-  Services.scriptloader.loadSubScript(`${rootURI  }lib.js`)
+  Services.scriptloader.loadSubScript(`${rootURI}lib.js`)
   Zotero.reMarkable.foo()
 }
 

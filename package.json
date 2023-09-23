@@ -6,7 +6,8 @@
     "build": "tsc --noEmit && node esbuild.js",
     "postbuild": "zotero-plugin-zipup build zotero-remarkable",
     "release": "zotero-plugin-release",
-    "postversion": "git push --follow-tags"
+    "postversion": "git push --follow-tags",
+    "start": "zotero-start"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
   },
   "homepage": "https://github.com/fdamken/zotero-remarkable",
   "dependencies": {
+    "esbuild": "^0.18.1",
     "mkdirp": "^3.0.1",
     "npm-run-all": "^4.1.5",
     "rimraf": "^5.0.1",

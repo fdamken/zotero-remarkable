@@ -10,7 +10,7 @@ const {
 
 Zotero.reMarkable = new class {
   log(msg) {
-    Zotero.debug(`reMarkable Integration for Zotero: ${  msg}`)
+    Zotero.debug(`reMarkable Integration for Zotero: ${msg}`)
   }
 
   foo() {
