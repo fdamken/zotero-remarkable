@@ -1,2 +1,2 @@
-make-it-green-instead =
-    .label = Make It Green Instead
+push-to-remarkable =
+    .label = Push to reMarkable

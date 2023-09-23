@@ -1,10 +1,9 @@
 declare const Zotero: any
 declare const Services: any
 
-var stylesheetID = 'zotero-remarkable-stylesheet'
-var ftlID = 'zotero-remarkable-ftl'
-var menuitemID = 'make-it-green-instead'
-var addedElementIDs = [stylesheetID, ftlID, menuitemID]
+var ftlId = 'zotero-remarkable-ftl'
+var menuItemId = 'push-to-remarkable'
+var addedElementIDs = [ftlId, menuItemId]
 
 function log(msg) {
   Zotero.debug(`reMarkable Integration for Zotero: ${msg}`)
@@ -21,30 +20,22 @@ export async function startup({ id, version, rootURI }) {
   var zp = Zotero.getActiveZoteroPane()
   if (zp) {
     const doc = zp.document
-    const link1 = doc.createElement('link')
-    link1.id = stylesheetID
-    link1.type = 'text/css'
-    link1.rel = 'stylesheet'
-    link1.href = `${rootURI}style.css`
-    doc.documentElement.appendChild(link1)
 
-    const link2 = doc.createElement('link')
-    link2.id = ftlID
-    link2.rel = 'localization'
-    link2.href = 'zotero-remarkable.ftl'
-    doc.documentElement.appendChild(link2)
+    const linkFtl = doc.createElement('link')
+    linkFtl.id = ftlId
+    linkFtl.rel = 'localization'
+    linkFtl.href = 'zotero-remarkable.ftl'
+    doc.documentElement.appendChild(linkFtl)
 
-    const menuitem = doc.createXULElement('menuitem')
-    menuitem.id = menuitemID
-    menuitem.setAttribute('type', 'checkbox')
-    menuitem.setAttribute('data-l10n-id', 'make-it-green-instead')
-    // MozMenuItem#checked is available in Zotero 7
-    menuitem.addEventListener('command', () => Zotero.reMarkable.toggleGreen(menuitem.checked))
-    doc.getElementById('menu_viewPopup').appendChild(menuitem)
+    const menuItem = doc.createXULElement('menuitem')
+    menuItem.id = menuItemId
+    menuItem.setAttribute('type', 'checkbox')
+    menuItem.setAttribute('data-l10n-id', 'push-to-remarkable')
+    menuItem.addEventListener('command', () => Zotero.reMarkable.pushToReMakable())
+    doc.getElementById('menu_viewPopup').appendChild(menuItem)
   }
 
   Services.scriptloader.loadSubScript(`${rootURI}lib.js`)
-  Zotero.reMarkable.foo()
 }
 
 export function shutdown() {
