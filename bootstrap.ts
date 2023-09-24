@@ -35,6 +35,7 @@ export async function startup({ id, version, rootURI }) {
   }
 
   Services.scriptloader.loadSubScript(`${rootURI}lib.js`)
+  Zotero.reMarkable.init()
 }
 
 export function shutdown() {

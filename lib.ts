@@ -1,18 +1,122 @@
+declare const OS: any
 declare const Services: any
 declare const Zotero: any
 
-/*
 declare const Components: any
 const {
-  classes: Cc,
-  interfaces: Ci,
   utils: Cu,
 } = Components
-*/
+
+Cu.import("resource://gre/modules/osfile.jsm")
+
+const PREF_DEVICE_TOKEN = "zotero-remarkable.device-token"
+const PREF_ONE_TIME_CODE = "zotero-remarkable.one-time-code"
+const PREF_PARENT_ID = "zotero-remarkable.parent-id"
+const FIELD_EXTRA = "extra"
+const FIELD_EXTRA_CITATION_KEY = "Citation Key"
+const FIELD_EXTRA_DOCID = "reMarkable-DocID"
+
+let cachedClient = null
+
+const extractExtraField = function(extra: string, fieldName: string): string {
+  for (const line of extra.split("\n")) {
+    const i = line.indexOf(":");
+    const key = line.slice(0, i)
+    const value = line.slice(i + 1)
+    if (key.trim() === fieldName) {
+      return value.trim()
+    }
+  }
+  return null
+}
+
+class ReMarkable {
+  deviceToken: string
+  bearerToken: string
+
+  async register(code: string) {
+    this.log(`Registering with code ${code}`)
+    // Make request
+    const response = await fetch("https://webapp.cloud.remarkable.com/token/json/2/device/new", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code: code,
+        deviceDesc: "desktop-macos",
+        deviceId: crypto.randomUUID(),
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`Device registration failed with status ${response.status} ${response.statusText}; body ${await response.text()}`)
+    }
+    const deviceToken = await response.text()
+    this.deviceToken = deviceToken
+    this.log(`Device registration successful, got device token ${deviceToken}`)
+  }
+
+  async refreshToken() {
+    this.log("Refreshing device token")
+    const response = await fetch("https://webapp.cloud.remarkable.com/token/json/2/user/new", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.deviceToken}`,
+      },
+    })
+    if (!response.ok) {
+      throw new Error(`Token refresh failed with status ${response.status} ${response.statusText}; body ${await response.text()}`)
+    }
+    const bearerToken = await response.text()
+    this.bearerToken = bearerToken
+    this.log(`Token refresh successful, got Bearer token ${bearerToken}`)
+  }
+
+  async uploadPdf(fileName: string, filePath: string, parentId?: string): Promise<string> {
+    this.log(`Uploading PDF ${fileName} from ${filePath} to ${parentId}`)
+    // The file content has to be wrapped in an file object, otherwise the
+    // reMarkable cannot parse the PDF file. Figuring this out took ages as the
+    // API does not return an error or so but silently accepts the data.
+    const file = new File([await OS.File.read(filePath)], fileName)
+    const response = await fetch("https://internal.cloud.remarkable.com/doc/v2/files", {
+      method: "POST",
+      body: file,
+      headers: {
+        "Authorization": `Bearer ${this.bearerToken}`,
+        "Content-Type": "application/pdf",
+        "rM-Meta": btoa(JSON.stringify({
+          parent: parentId || "",
+          file_name: fileName,
+        })),
+        "rM-Source": "WebLibrary",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`PDF upload failed with status ${response.status} ${response.statusText}; body ${await response.text()}`)
+    }
+    return (await response.json()).docID
+  }
+
+  setDeviceToken(deviceToken: string) {
+    this.deviceToken = deviceToken
+  }
+
+  private log(message: string) {
+    Zotero.debug(`reMarkable: ${message}`)
+  }
+}
 
 Zotero.reMarkable = new class {
-  log(msg) {
-    Zotero.debug(`reMarkable Integration for Zotero: ${msg}`)
+  log(message: string) {
+    Zotero.debug(`reMarkable Integration for Zotero: ${message}`)
+  }
+
+  init() {
+    // this resets the preference on every start, but that is fine---it is a one-time code, after all
+    Zotero.Prefs.set(PREF_ONE_TIME_CODE, "INSERT ONE-TIME CODE FOR REMARKABLE HERE", true)
+    if (!Zotero.Prefs.get(PREF_PARENT_ID, true)) {
+      Zotero.Prefs.set(PREF_PARENT_ID, "", true)
+    }
   }
 
   // Copied from Zotfile.
@@ -43,8 +147,55 @@ Zotero.reMarkable = new class {
         })
   }
 
+  async createReMarkableClient(): Promise<ReMarkable> {
+    const client = new ReMarkable()
+    const storedDeviceToken = Zotero.Prefs.get(PREF_DEVICE_TOKEN, true)
+    if (storedDeviceToken) {
+      this.log(`Fetched device token from preferences: ${storedDeviceToken}`)
+      client.setDeviceToken(storedDeviceToken)
+    } else {
+      // TODO: more user-friendly way of setting the code from https://my.remarkable.com/device/desktop/connect
+      const code = Zotero.Prefs.get(PREF_ONE_TIME_CODE, true)
+      await client.register(code)
+      Zotero.Prefs.set(PREF_DEVICE_TOKEN, client.deviceToken, true)
+    }
+    await client.refreshToken()
+    return Promise.resolve(client)
+  }
+
+  async getReMarkableClient(): Promise<ReMarkable> {
+    if (!cachedClient) {
+      cachedClient = await this.createReMarkableClient()
+    }
+    return Promise.resolve(cachedClient)
+  }
+
+  async sendSingleAttachmentToReMarkable(attachment: any, client: ReMarkable, parentId?: string) {
+    const parentItem = Zotero.Items.get(attachment.parentItemID)
+    const extra = parentItem.getField(FIELD_EXTRA)
+    const existingId = extractExtraField(extra, FIELD_EXTRA_DOCID)
+    const citationKey = extractExtraField(extra, FIELD_EXTRA_CITATION_KEY)
+    const fileNameWithExtension = citationKey || attachment.attachmentFilename
+    const fileName = fileNameWithExtension.substring(0, fileNameWithExtension.lastIndexOf(".pdf")) || fileNameWithExtension
+    const filePath = attachment.getFilePath()
+    if (existingId) {
+      throw Error(`Attachment ${fileName} is already synced to reMarkable with ID ${existingId}`)
+    }
+    const id = await client.uploadPdf(fileName, filePath, parentId)
+    this.log(`Upload of ${fileName} succeeded with document ID ${id}`)
+    parentItem.setField(FIELD_EXTRA, `${extra}\n${FIELD_EXTRA_DOCID}: ${id}`)
+  }
+
+  async sendAttachmentstoReMarkable(attachments: any, parentId?: string) {
+    const client = await this.getReMarkableClient()
+    for (const attachment of attachments) {
+      await this.sendSingleAttachmentToReMarkable(attachment, client, parentId)
+    }
+  }
+
   pushToReMakable() {
     const selectedPdfs = this.getSelectedPdfs()
-    this.log(`Pushing to reMarkable: ${selectedPdfs}`)
+    const parentId = Zotero.Prefs.get(PREF_PARENT_ID, true)
+    this.sendAttachmentstoReMarkable(selectedPdfs, parentId).then(() => this.log("Attachment upload successful"))
   }
 }
