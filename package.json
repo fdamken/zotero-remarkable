@@ -1,6 +1,6 @@
 {
   "name": "zotero-remarkable",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "reMarkable Integration for Zotero",
   "scripts": {
     "build": "tsc --noEmit && node esbuild.js",
