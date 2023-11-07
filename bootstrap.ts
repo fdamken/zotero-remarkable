@@ -31,7 +31,7 @@ export async function startup({ id, version, rootURI }) {
     menuItem.id = menuItemId
     menuItem.setAttribute('data-l10n-id', 'push-to-remarkable')
     menuItem.addEventListener('command', () => Zotero.reMarkable.pushToReMakable())
-    doc.getElementById('menu_viewPopup').appendChild(menuItem)
+    doc.getElementById('menu_ToolsPopup').appendChild(menuItem)
   }
 
   Services.scriptloader.loadSubScript(`${rootURI}lib.js`)

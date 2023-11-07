@@ -20,7 +20,7 @@ You can, of course, still use it (I do).
 5. Double-click on the value `INSERT ONE-TIME CODE FOR REMARKABLE HERE` of the entry `zotero-remarkable.one-time-code`.
 6. Insert the one-time registration code you obtained in step 1.
 7. Click on the checkmark and close the config editor and settings.
-8. Select any paper that has a PDF attachment and click on View -> Push to reMarkable. (This must be done while the code is still valid.)
+8. Select any paper that has a PDF attachment and click on Tools -> Push to reMarkable. (This must be done while the code is still valid.)
 The PDF should now appear on the root folder of your reMarkable, although it might take some time due to the initial registration).
 
 ### Setting a Parent Folder
