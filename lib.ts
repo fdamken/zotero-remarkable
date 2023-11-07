@@ -29,6 +29,41 @@ const extractExtraField = function(extra: string, fieldName: string): string {
   return null
 }
 
+class Progress {
+  private win: any
+  private progress: any
+  private total: number
+  private doneCounter: number
+
+  constructor(total: number, message: string) {
+    this.win = new Zotero.ProgressWindow({ closeOnClick: false })
+    this.win.changeHeadline(`reMarkable: ${message}`)
+    const icon = `chrome://zotero/skin/treesource-unfiled${Zotero.hiDPI ? '@2x' : ''}.png`
+    this.progress = new this.win.ItemProgress(icon, message)
+
+    this.total = total
+    this.doneCounter = 0
+
+    this.win.show()
+  }
+
+  next() {
+    this.doneCounter++
+
+    this.progress.setProgress((100 * this.doneCounter) / this.total)
+  }
+
+  status(message: string) {
+    this.progress.setText(message)
+  }
+
+  done() {
+    this.progress.setProgress(100)
+    this.progress.setText('Done')
+    this.win.startCloseTimer(500)
+  }
+}
+
 class ReMarkable {
   deviceToken: string
   bearerToken: string
@@ -106,6 +141,8 @@ class ReMarkable {
 }
 
 Zotero.reMarkable = new class {
+  progress: Progress
+
   log(message: string) {
     Zotero.debug(`reMarkable Integration for Zotero: ${message}`)
   }
@@ -147,29 +184,36 @@ Zotero.reMarkable = new class {
   }
 
   async createReMarkableClient(): Promise<ReMarkable> {
+    this.progress.status("Creating reMarkable client.")
     const client = new ReMarkable()
     const storedDeviceToken = Zotero.Prefs.get(PREF_DEVICE_TOKEN, true)
     if (storedDeviceToken) {
       this.log(`Fetched device token from preferences: ${storedDeviceToken}`)
+      this.progress.status("Using stored device token.")
       client.setDeviceToken(storedDeviceToken)
     } else {
       // TODO: more user-friendly way of setting the code from https://my.remarkable.com/device/desktop/connect
       const code = Zotero.Prefs.get(PREF_ONE_TIME_CODE, true)
+      this.progress.status(`Registering new client with one-time-code ${code}.`)
       await client.register(code)
       Zotero.Prefs.set(PREF_DEVICE_TOKEN, client.deviceToken, true)
     }
+    this.progress.status("Refreshing token.")
     await client.refreshToken()
     return Promise.resolve(client)
   }
 
   async getReMarkableClient(): Promise<ReMarkable> {
-    if (!cachedClient) {
+    if (cachedClient) {
+      this.progress.status("Using cached client.")
+    } else {
       cachedClient = await this.createReMarkableClient()
     }
     return Promise.resolve(cachedClient)
   }
 
   async sendSingleAttachmentToReMarkable(attachment: any, client: ReMarkable, parentId?: string) {
+    this.progress.status("Sending attachment.")
     const parentItem = Zotero.Items.get(attachment.parentItemID)
     const extra = parentItem.getField(FIELD_EXTRA)
     const existingId = extractExtraField(extra, FIELD_EXTRA_DOCID)
@@ -178,23 +222,30 @@ Zotero.reMarkable = new class {
     const fileName = fileNameWithExtension.substring(0, fileNameWithExtension.lastIndexOf(".pdf")) || fileNameWithExtension
     const filePath = attachment.getFilePath()
     if (existingId) {
-      throw Error(`Attachment ${fileName} is already synced to reMarkable with ID ${existingId}`)
+      this.log(`Attachment ${fileName} is already synced to reMarkable with ID ${existingId}`)
+      this.progress.status("Attachment already uploaded.")
+      return
     }
+    this.progress.status(`Uploading PDF with file name ${fileName}.`)
     const id = await client.uploadPdf(fileName, filePath, parentId)
     this.log(`Upload of ${fileName} succeeded with document ID ${id}`)
     parentItem.setField(FIELD_EXTRA, `${extra}\n${FIELD_EXTRA_DOCID}: ${id}`)
   }
 
   async sendAttachmentstoReMarkable(attachments: any, parentId?: string) {
+    this.progress.status("Getting client.")
     const client = await this.getReMarkableClient()
     for (const attachment of attachments) {
       await this.sendSingleAttachmentToReMarkable(attachment, client, parentId)
+      this.progress.next()
     }
+    this.progress.done()
   }
 
   pushToReMakable() {
     const selectedPdfs = this.getSelectedPdfs()
     const parentId = Zotero.Prefs.get(PREF_PARENT_ID, true)
+    this.progress = new Progress(selectedPdfs.length, "Uploading Attachments")
     this.sendAttachmentstoReMarkable(selectedPdfs, parentId).then(() => this.log("Attachment upload successful"))
   }
 }
