@@ -41,8 +41,8 @@ This is to prevent duplicates.
 If you really want to push it again, e.g., if you deleted the file, you have to edit the `Extra` field of the corresponding entry and remove the line starting with `reMarkable-DocID`.
 
 ### Naming
-If a `Citation Key` is present in the `Extra` field, the files pushed to the reMarkable are named `${citationKey}.pdf`.
-If no citation key is present, the original PDF file name is retained.
+If [BetterBibTeX](https://retorque.re/zotero-better-bibtex/) is installed, the files pushed to the reMarkable are named `${citationKey}.pdf`.
+Otherwise, the original PDF file name is retained.
 
 ### Basic Troubleshooting
 If the synchronization does not work, you can always delete the preference `zotero-remarkable.device-token` in the configuration editor (see above).

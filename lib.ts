@@ -13,7 +13,6 @@ const PREF_DEVICE_TOKEN = "zotero-remarkable.device-token"
 const PREF_ONE_TIME_CODE = "zotero-remarkable.one-time-code"
 const PREF_PARENT_ID = "zotero-remarkable.parent-id"
 const FIELD_EXTRA = "extra"
-const FIELD_EXTRA_CITATION_KEY = "Citation Key"
 const FIELD_EXTRA_DOCID = "reMarkable-DocID"
 
 let cachedClient = null
@@ -174,7 +173,7 @@ Zotero.reMarkable = new class {
     const parentItem = Zotero.Items.get(attachment.parentItemID)
     const extra = parentItem.getField(FIELD_EXTRA)
     const existingId = extractExtraField(extra, FIELD_EXTRA_DOCID)
-    const citationKey = extractExtraField(extra, FIELD_EXTRA_CITATION_KEY)
+    const citationKey = Zotero.BetterBibTeX ? (Zotero.BetterBibTeX.KeyManager.get(parentItem.id) || {}).citationKey : null
     const fileNameWithExtension = citationKey || attachment.attachmentFilename
     const fileName = fileNameWithExtension.substring(0, fileNameWithExtension.lastIndexOf(".pdf")) || fileNameWithExtension
     const filePath = attachment.getFilePath()
